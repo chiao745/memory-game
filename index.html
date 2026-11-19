@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>記憶翻牌大挑戰</title>
+<style>
+*{box-sizing:border-box}body{margin:0;min-height:100vh;font-family:system-ui,-apple-system,"Noto Sans TC",sans-serif;background:linear-gradient(135deg,#eef2ff,#fff1f2);display:flex;justify-content:center;align-items:center;padding:20px;color:#252b48}
+.game{width:min(100%,480px);background:white;border-radius:24px;padding:22px;box-shadow:0 14px 40px #303b6520}
+header{background:#252b48;color:white;border-radius:18px;padding:20px;text-align:center}
+h1{margin:0 0 8px;font-size:26px}header p{margin:0;color:#d7ddf7;font-size:14px}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:18px}
+.stat{background:#414968;border-radius:12px;padding:10px 4px}.stat span{display:block;color:#dce2ff;font-size:12px}.stat strong{font-size:24px}
+.hint{text-align:center;color:#68708c;font-size:14px;margin:18px 0 12px}
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.card {
+    aspect-ratio: 1;
+    font-size: clamp(42px, 12vw, 64px);
+    font-weight: 700;
+    border-radius: 15px;
+}
+
+.card small {
+    font-size: 11px;
+}
+
+.card.open,
+.card.matched {
+    font-size: clamp(42px, 12vw, 64px);
+}
+button#restart{width:100%;margin-top:18px;padding:13px;border:0;border-radius:12px;background:#5366a5;color:white;font-size:16px;font-weight:700;cursor:pointer}
+button#restart:hover{background:#40538f}
+#message{display:none;margin:16px 0 0;padding:16px;text-align:center;border-radius:14px;background:#e4f7e9;color:#167a3a}
+#message.show{display:block}#message strong{display:block;font-size:22px;margin:5px}
+footer{text-align:center;color:#9298aa;font-size:12px;margin-top:14px}
+@media(max-width:380px){.game{padding:15px}h1{font-size:22px}.card{font-size:32px}}
+</style>
+</head>
+<body>
+<main class="game">
+<header>
+<h1>🧠 記憶翻牌大挑戰</h1>
+<p>考驗你的記憶力，找出所有相同圖案！</p>
+<div class="stats">
+<div class="stat"><span>翻牌次數</span><strong id="moves">0</strong></div>
+<div class="stat"><span>配對進度</span><strong id="progress">0/6</strong></div>
+<div class="stat"><span>最佳紀錄</span><strong id="best">--</strong></div>
+</div>
+</header>
+<p class="hint">點擊卡片翻開，每次找出兩張相同圖案</p>
+<section class="grid" id="grid" aria-label="記憶翻牌卡片"></section>
+<div id="message"><div style="font-size:30px">🎉</div><strong>恭喜過關！</strong><span id="result"></span></div>
+<button id="restart">🔄 重新洗牌再玩一次</button>
+<footer>找到全部 6 組配對，挑戰更少的翻牌次數！</footer>
+</main>
+<script>
+const pictures=["🐱","🍓","🚀","🌈","🐼","🍀"];
+const grid=document.getElementById("grid");
+let cards=[],opened=[],matched=[],moves=0,best=Number(localStorage.getItem("memoryBest"))||null,lock=false;
+function shuffle(items){for(let i=items.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[items[i],items[j]]=[items[j],items[i]];}return items;}
+function update(){
+ document.getElementById("moves").textContent=moves;
+ document.getElementById("progress").textContent=`${matched.length/2}/6`;
+ document.getElementById("best").textContent=best===null?"--":best;
+}
+function start(){
+ cards=shuffle([...pictures,...pictures]);opened=[];matched=[];moves=0;lock=false;
+ document.getElementById("message").classList.remove("show");
+ grid.innerHTML="";
+ cards.forEach((symbol,index)=>{
+  const card=document.createElement("button");card.className="card";card.type="button";
+  card.setAttribute("aria-label","未翻開的卡片");card.innerHTML="?<small>FLIP</small>";
+  card.addEventListener("click",()=>flip(index));grid.appendChild(card);
+ });
+ update();
+}
+function flip(index){
+ if(lock||opened.includes(index)||matched.includes(index))return;
+ const el=grid.children[index];el.classList.add("open");el.innerHTML=cards[index];el.setAttribute("aria-label",cards[index]);
+ opened.push(index);
+ if(opened.length===2){
+  moves++;update();
+  const [a,b]=opened;
+  if(cards[a]===cards[b]){
+   matched.push(a,b);[a,b].forEach(i=>{grid.children[i].classList.add("matched");grid.children[i].innerHTML=cards[i]+"<small>✓ 配對成功</small>";});
+   opened=[];update();
+   if(matched.length===12)finish();
+  }else{
+   lock=true;setTimeout(()=>{
+    [a,b].forEach(i=>{const c=grid.children[i];c.classList.remove("open");c.innerHTML="?<small>FLIP</small>";c.setAttribute("aria-label","未翻開的卡片");});
+    opened=[];lock=false;
+   },850);
+  }
+ }
+}
+function finish(){
+ if(best===null||moves<best){best=moves;localStorage.setItem("memoryBest",best);}
+ update();document.getElementById("result").textContent=`你用了 ${moves} 次翻牌，成功找出全部 6 組配對！`;
+ document.getElementById("message").classList.add("show");
+}
+document.getElementById("restart").addEventListener("click",start);
+start();
+</script>
+</body>
+</html>
